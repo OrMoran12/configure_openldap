@@ -1,0 +1,17 @@
+dn: {{ base_dn }}
+dc: {{ openldap_server_domain_name.split('.')[0] }}
+objectClass: top
+objectClass: domain
+
+dn: cn=ldapadm ,{{ base_dn }}
+objectClass: organizationalRole
+cn: ldapadm
+description: LDAP Manager
+
+dn: ou=People,{{ base_dn }}
+objectClass: organizationalUnit
+ou: People
+
+dn: ou=Group,{{ base_dn }}
+objectClass: organizationalUnit
+ou: Group

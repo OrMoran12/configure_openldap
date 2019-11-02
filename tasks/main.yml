@@ -1,0 +1,6 @@
+---
+ - name: Installing openldap
+   include_tasks: install_openldap.yml
+
+ - name: Configure openldap
+   include_tasks: configure_openldap.yml

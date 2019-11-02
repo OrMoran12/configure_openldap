@@ -1,0 +1,26 @@
+# The domain name for ldap
+openldap_server_domain_name: or.com
+
+# Password for for the admin
+openldap_server_rootpw: Aa123456!
+
+# The ldif file
+openldap_server_ldif: domain.ldif.js
+
+# All The ldif file
+ldif_file_list:
+   - basedomain.ldif
+   - ldapadmpasswd.ldif
+   - monitor.ldif
+
+openldap_server_package:
+   - openldap 
+   - compat-openldap 
+   - openldap-clients 
+   - openldap-servers 
+   - openldap-servers-sql 
+   - openldap-devel
+   - migrationtools
+
+openldap_server_path: "/etc/openldap/"
+openldap_user: ldap
