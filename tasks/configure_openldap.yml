@@ -1,0 +1,82 @@
+---
+- name: set base dn
+  set_fact:
+     base_dn: "dc={{ openldap_server_domain_name.split('.')[0] }},dc={{ openldap_server_domain_name.split('.')[1] }}"
+
+- name: Generate the root password for ldap
+  shell: slappasswd -s '{{ openldap_server_rootpw }}'
+  register: root_password
+  no_log: true
+
+
+- name: Copying configuration ldif
+  template:
+     src: '{{ item }}.j2'
+     dest: '/tmp/{{ item }}'
+  with_items: '{{ ldif_file_list }}'
+
+- name: configure ldapadmpasswd.ldif
+  command: ldapmodify -Y EXTERNAL -H ldapi:/// -f /tmp/ldapadmpasswd.ldif
+
+- name: configure monitor.ldif
+  command: ldapmodify -Y EXTERNAL -H ldapi:/// -f /tmp/monitor.ldif
+
+- name: Check configuration
+  command: slaptest -u
+  register: conf_test
+
+- name: fail if configuration test failed
+  fail:
+     msg: 'Something wrong with the configuration'
+  when: conf_test.rc != 0
+
+- name: configuring the database
+  copy:
+     src: /usr/share/openldap-servers/DB_CONFIG.example
+     dest: /var/lib/ldap/DB_CONFIG
+     owner: "{{ openldap_user }}"
+     group: "{{ openldap_user }}"
+     remote_src: true
+
+- name: restart slapd
+  service:
+     name: slapd
+     state: restarted
+     enabled: true
+
+- name: Adding basic schemas
+  command: ldapadd -Y EXTERNAL -H ldapi:/// -f '{{ openldap_server_path }}/schema/{{ item }}.ldif' 
+  register: add_schema_ans
+  with_items:
+     - cosine
+     - nis
+     - inetorgperson
+  ignore_errors: true
+
+- name: Check if Adding basic schema  failed because schema already added - If skipped is fine
+  fail:
+     msg: 'There was a adding the basic schemas'
+  when: item.rc != 0 and item.rc != 80
+  with_items: '{{ add_schema_ans.results }}'
+
+- name: configure migrating tools (for further user)
+  lineinfile:
+     path: /usr/share/migrationtools/migrate_common.ph
+     regexp: '^\${{ item.key }} = '
+     line: '${{item.key}} = {{ item.value }}'
+  with_items:
+     - { key: 'DEFAULT_MAIL_DOMAIN', value: '"{{ openldap_server_domain_name }}";' }
+     - { key: 'DEFAULT_BASE', value: '"{{ base_dn }}";' }
+     - { key: 'EXTENDED_SCHEMA', value: '1;' }
+
+
+- name: Adding Base domain
+  command: ldapadd -x -w '{{ openldap_server_rootpw }}' -D 'cn=ldapadm,{{ base_dn }}' -f /tmp/basedomain.ldif
+  register: add_base_ans
+  ignore_errors: true
+  no_log: true
+
+- name: Check if Adding Base Domain failed because its already exsist - If skipped is fine
+  fail:
+     msg: 'There was a problem with adding the base domain'
+  when: add_base_ans.rc != 0 and add_base_ans.rc != 68

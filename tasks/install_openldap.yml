@@ -1,0 +1,20 @@
+---
+
+- name: Install the openldap and required Packages for RedHat
+  yum: 
+     name: '{{ item }}'
+     state: installed
+  with_items: '{{ openldap_server_package }}'
+
+- name: ensuring firewall openldap
+  firewalld:
+     service: ldap
+     permanent: true
+     state: enabled
+     immediate: yes
+
+- name: starting The ldap service (slapd)
+  service:
+     name: slapd
+     state: restarted
+     enabled: true
